@@ -118,10 +118,17 @@ export async function POST(req) {
           try {
             sqlQuery = await generateSQL(userMessage);
             console.log(`🧠 Attempt ${attempt} SQL:\n`, sqlQuery);
-
-            // Save to cache
+            
+            // 🔍 Check if it looks like a valid SQL SELECT query
+            if (!sqlQuery.toLowerCase().startsWith('select')) {
+              sqlQuery = null; // Mark it as invalid
+              continue; // Try next attempt if available
+            }
+            
+            // ✅ Save only valid SQL to cache
             await supabase.from('sql_cache').insert([{ question: userMessage, sql: sqlQuery }]);
             break;
+            
           } catch (genError) {
             lastError = genError;
             console.warn(`🛑 SQL Generation failed at attempt ${attempt}:`, genError);
@@ -131,8 +138,14 @@ export async function POST(req) {
     }
 
     if (!sqlQuery) {
-      throw new Error("SQL generation failed.");
+      return new Response(JSON.stringify({
+        assistantMessage: "Please ask a valid question.",
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
+    
 
     const { data, error } = await supabase.rpc('sql_execute', {
       query: sqlQuery,
