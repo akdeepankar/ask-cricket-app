@@ -46,8 +46,30 @@ async function generateSQL(userMessage) {
      - Pre-filter rows where "Wicket Type" IS NOT NULL to improve performance
      - Then filter where current and previous 2 deliveries all have "Wicket Type" IS NOT NULL
      - Use Distinct if needed.
-  
-  9. Only return valid SQL. No explanations or markdown. Don’t use semicolons.
+  9. Use contextual reasoning to interpret the likely intent of a question. For example, if someone asks 'What is Chennai Super Kings' best score in Bangalore?', interpret it as 'What is Chennai Super Kings' highest overall score at the M. Chinnaswamy Stadium in Bangalore?'
+  10. Use contextual reasoning to infer the intended meaning of ambiguous or loosely phrased sports-related questions. For example, if someone asks 'What is CSK’s best score in Bangalore?', interpret it as 'What is Chennai Super Kings’ highest overall score at the M. Chinnaswamy Stadium in Bangalore?'. Be flexible in understanding both short forms and long forms of player names, team names, and stadiums.
+  11. "When the user asks for a team's 'best score' in a particular location, interpret this as:
+      -The team's highest total runs in a single match at that location.
+      -Join match metadata with innings data.
+      -Group by match ID, then SUM runs for each group (match).
+      -Wrap this in a subquery and apply MAX on the total scores from that subquery.
+      -This avoids the SQL error caused by nesting aggregate functions directly (e.g., MAX(SUM(...))).
+      -"Always fully qualify column names when joining tables with overlapping column names (like 'match_id'), to avoid ambiguity errors. E.g., use 'match_info.match_id' instead of just 'match_id'."
+      -Example Structure - SELECT MAX(total_score) FROM (
+                          SELECT SUM("Total Runs"::int) AS total_score
+                          FROM ...
+                          WHERE ...
+                          GROUP BY match_id
+                        ) AS match_totals;
+      - Handles fuzzy team name matching:
+        - Map abbreviations like 'CSK' to full names such as 'Chennai Super Kings'.
+        - Ensure both short and long forms of team names are supported.
+        - Handles fuzzy city name matching:
+        - Normalize city variations like 'Bangalore' to 'Bengaluru' or other common aliases.
+        - Use case-insensitive search (ILIKE) for flexible matching.
+
+
+  12. Only return valid SQL. No explanations or markdown. Don’t use semicolons.
   `;
   
   
