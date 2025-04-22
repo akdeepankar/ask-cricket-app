@@ -15,6 +15,9 @@ export default function Chat() {
   const [isThinking, setIsThinking] = useState(false);
   const [showSQL, setShowSQL] = useState(false);
   const [currentSQL, setCurrentSQL] = useState("");
+  const [fullTableHtml, setFullTableHtml] = useState("");
+  const [showTableModal, setShowTableModal] = useState(false);
+  
 
   const suggestedQuestions = [
     "Who scored the most runs in Indian Premiere League",
@@ -69,6 +72,71 @@ export default function Chat() {
     }
   };
 
+  function renderBotMessageWithTables(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const tables = doc.querySelectorAll("table");
+  
+    if (tables.length === 0) {
+      return <div dangerouslySetInnerHTML={{ __html: html }} />;
+    }
+  
+    const parts = [];
+    let lastIndex = 0;
+  
+    tables.forEach((table, i) => {
+      const fullHtml = table.outerHTML;
+      const rows = table.querySelectorAll("tr");
+      const startIndex = html.indexOf(table.outerHTML, lastIndex);
+  
+      if (startIndex === -1) return;
+  
+      // Push the text before this table
+      if (startIndex > lastIndex) {
+        const textBefore = html.slice(lastIndex, startIndex);
+        parts.push(<div key={`text-${i}`} dangerouslySetInnerHTML={{ __html: textBefore }} />);
+      }
+  
+      if (rows.length <= 7) {
+        parts.push(<div key={`table-${i}`} dangerouslySetInnerHTML={{ __html: table.outerHTML }} />);
+      } else {
+        const header = rows[0].outerHTML;
+        const limitedRows = Array.from(rows)
+          .slice(1, 7)
+          .map((row) => row.outerHTML)
+          .join("");
+        const truncatedHtml = `<table>${header}${limitedRows}</table>`;
+  
+        parts.push(
+          <div key={`truncated-table-${i}`}>
+            <div dangerouslySetInnerHTML={{ __html: truncatedHtml }} />
+            <button
+              className="view-sql-btn mt-2"
+              onClick={() => {
+                setFullTableHtml(fullHtml);
+                setShowTableModal(true);
+              }}
+            >
+              View full table
+            </button>
+          </div>
+        );
+      }
+  
+      lastIndex = startIndex + table.outerHTML.length;
+    });
+  
+    // Push remaining HTML after last table
+    if (lastIndex < html.length) {
+      const remainingText = html.slice(lastIndex);
+      parts.push(<div key="text-last" dangerouslySetInnerHTML={{ __html: remainingText }} />);
+    }
+  
+    return <>{parts}</>;
+  }
+  
+  
+
   if (!hasHydrated) return null;
 
   
@@ -107,7 +175,13 @@ export default function Chat() {
               transition={{ duration: 0.2 }}
             >
               <div className="avatar">{msg.sender === "user" ? "🧑" : "🤖"}</div>
-              <div className="bubble" dangerouslySetInnerHTML={{ __html: msg.text }} />
+              <div className="bubble">
+  {msg.sender === "bot"
+    ? renderBotMessageWithTables(msg.text)
+    : msg.text}
+</div>
+
+
               {msg.sender === "bot" && msg.sql && (
                 <button
                   className="view-sql-btn"
@@ -180,6 +254,28 @@ export default function Chat() {
   </div>
 )}
 
+{showTableModal && (
+  <div className="modal-overlay" onClick={() => setShowTableModal(false)}>
+    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <button className="modal-close-btn" onClick={() => setShowTableModal(false)}>×</button>
+      <h2 className="modal-title">Full Table</h2>
+      
+      {/* 🔧 Scrollable wrapper for the table */}
+      <div className="modal-table-wrapper">
+        <div dangerouslySetInnerHTML={{ __html: fullTableHtml }} />
+      </div>
+
+      <div className="modal-footer">
+        <button onClick={() => setShowTableModal(false)} className="modal-close-btn">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
 
     
       {/* Styles */}
@@ -193,6 +289,40 @@ export default function Chat() {
     background: linear-gradient(to right, #f0f4f8, #ffffff);
     color: #111827;
   }
+
+  .modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 700px;       /* 📏 Medium width */
+  max-height: 80vh;        /* ⛔ Prevents vertical overflow */
+  overflow-y: auto;        /* ✅ Enables vertical scrolling */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-table-wrapper {
+  overflow: auto;          /* ✅ Scrolls if table is big */
+  max-height: 60vh;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+/* Optional nice scrollbars */
+.modal-table-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.modal-table-wrapper::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 100, 100, 0.2);
+  border-radius: 4px;
+}
+
 
   .layout {
     display: flex;
@@ -453,18 +583,20 @@ export default function Chat() {
 
   /* Table Styling */
   table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
-    background-color: #fff;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  }
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  background-color: #fff;
+  box-shadow: none; /* 🔥 Remove box shadow */
+  border: none;     /* 🔥 Remove outer border */
+}
 
-  table th, table td {
-    padding: 10px 15px;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-  }
+table th, table td {
+  padding: 10px 15px;
+  text-align: left;
+  border: none; /* 🔥 Remove all row/cell dividers */
+}
+
 
   table th {
     background-color: #f9fafb;
