@@ -36,7 +36,7 @@ async function generateSQL(userMessage) {
   2. When filtering by player names like "dhoni" or "MS Dhoni", always use: 
      \`"Player Out" ILIKE '%dhoni%'\`
   3. If you are aggregating any numeric values, cast using "::int" (e.g., SUM("Batter Runs"::int))
-  4. Join tables via "match_id" if needed
+  4. Join tables via "match_id" if needed, but don't display it in select statement.
   5. Cast fields like "Over", "Ball", "Batter Runs", etc., to int before comparisons
   6. If the over is 20 return as 19, as it is counted from 0 to 19 in the database.
   7. These are the only available Seasons - 2007/08,2009,2009/10,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020/21,2021,2022,2023,2024,2025
