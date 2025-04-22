@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Bedrock Chatbot",
+  title: "Ask Cricket",
 };
 
 export default function RootLayout({ children }) {
