@@ -13,35 +13,44 @@ const supabase = createClient(
 // SQL generator using OpenAI
 async function generateSQL(userMessage) {
   const prompt = `
-You are a PostgreSQL expert helping with a cricket database.
-
-Generate a SELECT SQL query (PostgreSQL format) to answer the following question:
-"${userMessage}"
-
-Only use these two tables and their columns:
-
-match_info(
-  "match_id", "City", "Venue", "Match Type", "Gender", "Season", "Date", "Balls Per Over", "Teams", "Player of Match",
-  "Match Number", "Event Name", "Match Referees", "Reserve Umpires", "TV Umpires", "Umpires", "Toss Winner", 
-  "Toss Decision", "Winner", "Win Method", "Win By Wickets"
-)
-
-match_innings(
-  "match_id", "Inning", "Over", "Ball", "Batter", "Non-striker", "Bowler", "Batter Runs", "Extras", "Total Runs",
-  "Extra Types", "Wicket Type", "Player Out", "Fielders"
-)
-
-⚠️ Important: 
-1. Always quote column and table names with double quotes (e.g. "Bowler", not Bowler).
-2. When filtering by player names like "dhoni" or "MS Dhoni", always use: 
-   \`"Player Out" ILIKE '%dhoni%'\`
-3. If you are aggregating any numeric values, cast using "::int" (e.g., SUM("Batter Runs"::int))
-4. Join tables via "match_id" if needed
-5. Cast fields like "Over", "Ball", "Batter Runs", etc., to int before comparisons
-6. If the over is 20 return as 19, as it is counted from 0 to 19 in the database.
-7. Only return valid SQL. No explanations or markdown. Don’t use semicolons.
-`;
-
+  You are a PostgreSQL expert helping with a cricket database.
+  
+  Generate a SELECT SQL query (PostgreSQL format) to answer the following question:
+  "${userMessage}"
+  
+  Only use these two tables and their columns:
+  
+  match_info(
+    "match_id", "City", "Venue", "Match Type", "Gender", "Season", "Date", "Balls Per Over", "Teams", "Player of Match",
+    "Match Number", "Event Name", "Match Referees", "Reserve Umpires", "TV Umpires", "Umpires", "Toss Winner", 
+    "Toss Decision", "Winner", "Win Method", "Win By Wickets"
+  )
+  
+  match_innings(
+    "match_id", "Inning", "Over", "Ball", "Batter", "Non-striker", "Bowler", "Batter Runs", "Extras", "Total Runs",
+    "Extra Types", "Wicket Type", "Player Out", "Fielders"
+  )
+  
+  ⚠️ Important:
+  1. Always quote column and table names with double quotes (e.g. "Bowler", not Bowler).
+  2. When filtering by player names like "dhoni" or "MS Dhoni", always use: 
+     \`"Player Out" ILIKE '%dhoni%'\`
+  3. If you are aggregating any numeric values, cast using "::int" (e.g., SUM("Batter Runs"::int))
+  4. Join tables via "match_id" if needed
+  5. Cast fields like "Over", "Ball", "Batter Runs", etc., to int before comparisons
+  6. If the over is 20 return as 19, as it is counted from 0 to 19 in the database.
+  7. These are the only available Seasons - 2007/08,2009,2009/10,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020/21,2021,2022,2023,2024,2025
+  8. When checking for consecutive events (like 3 wickets in 3 balls by the same bowler), use the LAG() function with a window:
+     - Partition by "match_id", "Inning", "Bowler"
+     - Order by "Over"::int, "Ball"::int
+     - Pre-filter rows where "Wicket Type" IS NOT NULL to improve performance
+     - Then filter where current and previous 2 deliveries all have "Wicket Type" IS NOT NULL
+     - Use Distinct if needed.
+  
+  9. Only return valid SQL. No explanations or markdown. Don’t use semicolons.
+  `;
+  
+  
   const response = await openai.chat.completions.create({
     model: 'gpt-4',
     messages: [
