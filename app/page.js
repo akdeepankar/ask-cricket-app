@@ -1,14 +1,29 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import ChatView from "./components/ChatView";
 import About from "./components/About";
 import Welcome from "./components/Welcome";
 
-import { MessageSquare, BarChart2, Info } from "lucide-react";
+import { MessageSquare, BarChart2, Info, Menu } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("chat");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [footerExpanded, setFooterExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+      if (window.innerWidth > 768) setFooterExpanded(true); // Always expanded on web
+    };
+  
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
 
   const renderActiveComponent = useMemo(() => {
     switch (activeTab) {
@@ -16,7 +31,7 @@ export default function Home() {
         return <ChatView />;
       case "stats":
         return <Welcome />;
-      case "about":
+      case "about us":
         return <About />;
       default:
         return <div>Hello World</div>;
@@ -26,64 +41,97 @@ export default function Home() {
   const icons = {
     chat: <MessageSquare size={20} />,
     stats: <BarChart2 size={20} />,
-    about: <Info size={20} />,
+    "about us": <Info size={20} />,
   };
 
   return (
     <div className="layout">
+      {/* Mobile Menu Button */}
+      <button
+        className="mobile-menu-btn"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+      >
+        <Menu size={24} />
+      </button>
+
       <div className="content-area">
-        {/* Main Content Area */}
+        {/* Main Content */}
         <main className="main-content">{renderActiveComponent}</main>
 
-                {/* Sidebar */}
-                <aside className="sidebar">
+        {/* Sidebar */}
+        <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
           <div className="logo-container">
-            <h2 className="logo">Ask Cricket</h2>
+            <h2 className="logo">Ask Cricket 🏏</h2>
           </div>
 
           <nav className="tab-nav">
-            {["chat", "stats", "about"].map((tab) => (
+            {["chat", "stats", "about us"].map((tab) => (
               <button
                 key={tab}
                 className={`tab-btn ${activeTab === tab ? "active" : ""}`}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setSidebarOpen(false); // Close after selection on mobile
+                }}
               >
                 {icons[tab]}
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </nav>
-
-          <div className="disclaimer-card">
-            <p className="disclaimer-text">
-              ⚠️ This is a demo of Ask Cricket's chat functionalities. For real data, refer to official cricket sources.
-            </p>
-          </div>
         </aside>
-
       </div>
 
-      {/* Floating Footer */}
+      {/* Footer */}
       <footer className="footer">
-        <p>
-          © {new Date().getFullYear()} This project was built by students of the
-          BS in Data Science & Applications program at IIT Madras, with generous
-          support from the institute. <br /> We are experimenting and may not
-          always be accurate or up to date. Please don’t sue our professors or
-          IIT Madras for any wrong data 😛.
-        </p>
-      </footer>
+  <div className={`footer-content ${footerExpanded ? "expanded" : ""}`}>
+  <p>
+  © {new Date().getFullYear()} This project was built by students of the{" "}
+  <a
+    href="https://study.iitm.ac.in/ds/"
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{ color: " #3b82f6", textDecoration: "underline" }}
+  >
+    BS in Data Science & Applications
+  </a>{" "}
+  program at IIT Madras.
+</p>
 
+    {(footerExpanded || !isMobile) && (
+      <p>
+        We received generous support from IIT Madras for cloud credits, and we&rsquo;re experimenting with this project. It might not always be accurate, and we ask for your understanding.
+        <br></br>Please don&rsquo;t sue our professors or IIT Madras for any wrong data 😛.
+      </p>
+    )}
+    {isMobile && (
+      <button
+        className="toggle-footer-btn"
+        onClick={() => setFooterExpanded((prev) => !prev)}
+      >
+        {footerExpanded ? "Show Less" : "Show More About This Project"}
+      </button>
+    )}
+  </div>
+</footer>
+
+
+
+
+      {/* CSS Styles */}
       <style jsx global>{`
-        html, body, #__next {
+        html,
+        body,
+        #__next {
           margin: 0;
           padding: 0;
           height: 100%;
           width: 100%;
-          font-family: 'Inter', sans-serif;
+          font-family: "Inter", sans-serif;
           background: #f5f5f5;
           color: #333;
         }
+
 
         .layout {
           display: flex;
@@ -96,13 +144,24 @@ export default function Home() {
           display: flex;
           flex: 1;
           overflow: hidden;
-          padding-bottom: 60px;
+          flex-direction: row; /* sidebar to right */
+        }
+
+        main.main-content {
+          flex: 1;
+          padding: 1rem;
+          background-color: #fff;
+          border-top-right-radius: 20px;
+          border-bottom-right-radius: 20px;
+          box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+          animation: fadeIn 0.3s ease forwards;
+          overflow-y: auto;
         }
 
         .sidebar {
           width: 280px;
           background: linear-gradient(145deg, #f4f5f7, #e9ecef);
-          border-right: 1px solid #ddd;
+          border-left: 1px solid #ddd;
           display: flex;
           flex-direction: column;
           padding: 2rem;
@@ -153,43 +212,86 @@ export default function Home() {
           color: #1f1f1f;
         }
 
-        .disclaimer-card {
-          background-color: #fff;
-          padding: 1rem;
-          border-radius: 10px;
-          box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.05);
-          margin-top: auto;
-        }
+.footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  padding: 1rem 2rem;
+  background-color: #f4f4f4;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #777;
+  border-top: 1px solid #e0e0e0;
+  z-index: 10;
+}
 
-        .disclaimer-text {
-          font-size: 0.875rem;
-          color: #6c757d;
-          text-align: center;
-        }
+.toggle-footer-btn {
+  background: none;
+  border: none;
+  color: #0070f3;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
 
-        main.main-content {
-          flex: 1;
-          padding: 2rem;
-          background-color: #fff;
-          border-top-left-radius: 20px;
-          border-bottom-left-radius: 20px;
-          box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
-          animation: fadeIn 0.3s ease forwards;
-          overflow-y: auto;
-        }
+@media (max-width: 768px) {
+  .footer {
+    font-size: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
 
-        .footer {
+  .toggle-footer-btn {
+    font-size: 0.75rem;
+  }
+
+  .footer-content p {
+    margin: 0.3rem 0;
+  }
+}
+
+
+
+        .mobile-menu-btn {
+          display: none;
           position: fixed;
-          left: 0;
-          bottom: 0;
-          width: 100%;
-          padding: 1rem 2rem;
-          background-color: #f4f4f4;
-          text-align: center;
-          font-size: 0.9rem;
-          color: #777;
-          border-top: 1px solid #e0e0e0;
-          z-index: 10;
+          top: 1rem;
+          right: 1rem;
+          background: white;
+          border: 1px solid #ccc;
+          border-radius: 8px;
+          padding: 0.5rem;
+          z-index: 100;
+        }
+
+        @media (max-width: 768px) {
+          .content-area {
+            flex-direction: column;
+          }
+
+          .sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 70%;
+            max-width: 280px;
+            height: 100vh;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 99;
+          }
+
+          .sidebar.open {
+            transform: translateX(0);
+          }
+
+          .main-content {
+            padding: 1rem;
+          }
+
+          .mobile-menu-btn {
+            display: block;
+          }
         }
 
         @keyframes fadeIn {
